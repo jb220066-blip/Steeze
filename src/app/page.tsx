@@ -20,7 +20,7 @@ import {
   Star,
   CreditCard,
 } from 'lucide-react';
-import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
+import { PayPalScriptProvider, PayPalButtons, usePayPalScriptReducer } from '@paypal/react-paypal-js';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -1027,74 +1027,12 @@ export default function SteezePage() {
                       </p>
                     </div>
                   ) : (
-                    <PayPalButtons
-                      style={{
-                        layout: 'vertical',
-                        color: 'white',
-                        shape: 'pill',
-                        label: 'paypal',
-                        height: 45,
-                      }}
-                      disabled={submitting}
-                      createOrder={(data, actions) => {
-                        const total = getTotalPrice() + shippingCost;
-                        setPaypalOrderCreated(true);
-                        return actions.order.create({
-                          purchase_units: [
-                            {
-                              amount: {
-                                currency_code: 'SEK',
-                                value: total.toFixed(2),
-                                breakdown: {
-                                  item_total: {
-                                    currency_code: 'SEK',
-                                    value: getTotalPrice().toFixed(2),
-                                  },
-                                  shipping: {
-                                    currency_code: 'SEK',
-                                    value: shippingCost.toFixed(2),
-                                  },
-                                },
-                              },
-                              description: `Steeze Order - ${items.length} item(s)`,
-                            },
-                          ],
-                        });
-                      }}
-                      onApprove={async (data, actions) => {
-                        if (!actions.order) return;
-                        try {
-                          const details = await actions.order.capture();
-                          if (details.status === 'COMPLETED') {
-                            await saveOrder(data.orderID);
-                          } else {
-                            toast({
-                              title: 'Payment not completed',
-                              variant: 'destructive',
-                            });
-                          }
-                        } catch {
-                          toast({
-                            title: 'Payment capture failed',
-                            variant: 'destructive',
-                          });
-                        }
-                      }}
-                      onError={() => {
-                        toast({
-                          title: 'PayPal Error',
-                          description: 'Something went wrong with the PayPal payment. Please try again.',
-                          variant: 'destructive',
-                        });
-                        setPaypalOrderCreated(false);
-                      }}
-                      onCancel={() => {
-                        toast({
-                          title: 'Payment Cancelled',
-                          description: 'You cancelled the PayPal payment.',
-                        });
-                        setPaypalOrderCreated(false);
-                      }}
+                    <PayPalButtonWrapper
+                      submitting={submitting}
+                      items={items}
+                      shippingCost={shippingCost}
+                      getTotalPrice={getTotalPrice}
+                      saveOrder={saveOrder}
                     />
                   )}
                   <p className="mt-2 text-center text-[11px] text-muted-foreground">
@@ -1285,6 +1223,122 @@ export default function SteezePage() {
         {renderFooter()}
       </div>
     </PayPalScriptProvider>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  PayPal Button Wrapper with Error Detection                         */
+/* ------------------------------------------------------------------ */
+
+function PayPalButtonWrapper({
+  submitting,
+  items,
+  shippingCost,
+  getTotalPrice,
+  saveOrder,
+}: {
+  submitting: boolean;
+  items: CartItem[];
+  shippingCost: number;
+  getTotalPrice: () => number;
+  saveOrder: (paypalOrderId?: string) => Promise<void>;
+}) {
+  const [{ isPending, isRejected }]
+    = usePayPalScriptReducer();
+  const { toast } = useToast();
+
+  if (isRejected) {
+    return (
+      <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-4 text-center">
+        <p className="text-sm font-semibold text-red-400">PayPal failed to load</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          This usually means the PayPal Client ID is invalid or from a personal account.
+          You need a PayPal Business account with a live API Client ID.
+        </p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Go to <span className="font-semibold text-foreground">developer.paypal.com</span> and create
+          a REST API app with your business account to get a valid Client ID.
+        </p>
+      </div>
+    );
+  }
+
+  if (isPending) {
+    return (
+      <div className="flex items-center justify-center p-6">
+        <Loader2 className="mr-2 h-5 w-5 animate-spin text-muted-foreground" />
+        <span className="text-sm text-muted-foreground">Loading PayPal...</span>
+      </div>
+    );
+  }
+
+  return (
+    <PayPalButtons
+      style={{
+        layout: 'vertical',
+        color: 'white',
+        shape: 'pill',
+        label: 'paypal',
+        height: 45,
+      }}
+      disabled={submitting}
+      createOrder={(_data, actions) => {
+        const total = getTotalPrice() + shippingCost;
+        return actions.order.create({
+          purchase_units: [
+            {
+              amount: {
+                currency_code: 'SEK',
+                value: total.toFixed(2),
+                breakdown: {
+                  item_total: {
+                    currency_code: 'SEK',
+                    value: getTotalPrice().toFixed(2),
+                  },
+                  shipping: {
+                    currency_code: 'SEK',
+                    value: shippingCost.toFixed(2),
+                  },
+                },
+              },
+              description: `Steeze Order - ${items.length} item(s)`,
+            },
+          ],
+        });
+      }}
+      onApprove={async (data, actions) => {
+        if (!actions.order) return;
+        try {
+          const details = await actions.order.capture();
+          if (details.status === 'COMPLETED') {
+            await saveOrder(data.orderID);
+          } else {
+            toast({
+              title: 'Payment not completed',
+              variant: 'destructive',
+            });
+          }
+        } catch {
+          toast({
+            title: 'Payment capture failed',
+            variant: 'destructive',
+          });
+        }
+      }}
+      onError={() => {
+        toast({
+          title: 'PayPal Error',
+          description: 'Something went wrong. Make sure you have a PayPal Business account.',
+          variant: 'destructive',
+        });
+      }}
+      onCancel={() => {
+        toast({
+          title: 'Payment Cancelled',
+          description: 'You cancelled the PayPal payment.',
+        });
+      }}
+    />
   );
 }
 
