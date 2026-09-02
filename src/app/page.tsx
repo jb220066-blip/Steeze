@@ -1199,7 +1199,7 @@ export default function SteezePage() {
   return (
     <PayPalScriptProvider
       options={{
-        clientId: 'BTK7EXBUDQU7E',
+        clientId: 'BAAQV6_Yzn9qo9uUfZfJYfB3P_CrUzKrkxzXaTaxTkVkrB_EN1ilD7CX2Sn71s8kJWpWLFT64xIHvT8ayI',
         currency: 'SEK',
         intent: 'capture',
       }}
