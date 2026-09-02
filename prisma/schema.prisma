@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  price       Float
+  category    String
+  sizes       String   // comma-separated: "S,M,L,XL"
+  colors      String   // comma-separated: "Black,White"
+  imageUrl    String
+  inStock     Boolean  @default(true)
+  featured    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  customerName    String
+  customerEmail   String
+  customerPhone   String
+  shippingAddress String
+  shippingCity    String
+  shippingZip     String
+  shippingCountry String   @default("Sweden")
+  shippingMethod  String   // "standard" or "express"
+  paymentMethod   String   // "swish" or "paypal"
+  paypalOrderId   String?
+  totalAmount     Float
+  status          String   @default("pending")
+  items           OrderItem[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model OrderItem {
+  id        String @id @default(cuid())
+  orderId   String
+  productId String
+  productName String
+  size      String
+  color     String
+  quantity  Int
+  price     Float
+  order     Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}

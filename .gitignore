@@ -1,0 +1,9 @@
+node_modules/
+.next/
+db/*.db
+*.log
+upload/
+tool-results/
+.zscripts/
+dev.log
+server.log
