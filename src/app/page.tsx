@@ -233,6 +233,7 @@ export default function SteezePage() {
     useCartStore();
   const { toast } = useToast();
   const productsRef = useRef<HTMLDivElement>(null);
+  const paySectionRef = useRef<HTMLDivElement>(null);
 
   /* ---- Filter products ---- */
   useEffect(() => {
@@ -683,7 +684,7 @@ export default function SteezePage() {
     }
 
     return (
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-7xl px-4 pb-28 pt-10 sm:px-6 lg:px-8 lg:pb-10">
         <h2 className="mb-8 text-2xl font-bold tracking-wider uppercase sm:text-3xl">
           Checkout
         </h2>
@@ -980,7 +981,7 @@ export default function SteezePage() {
           </div>
 
           {/* Right: Order Summary */}
-          <div>
+          <div ref={paySectionRef}>
             <div className="sticky top-24 rounded-xl border border-border bg-card p-6">
               <h3 className="mb-4 text-sm font-semibold tracking-wider uppercase text-muted-foreground">
                 Order Summary
@@ -1109,6 +1110,31 @@ export default function SteezePage() {
               >
                 Continue Shopping
               </Button>
+            </div>
+          </div>
+
+          {/* Mobile sticky payment bar */}
+          <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card/95 backdrop-blur-lg p-4 lg:hidden">
+            <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Total</p>
+                <p className="text-lg font-bold">{getTotalPrice() + shippingCost} SEK</p>
+              </div>
+              {formValid && paymentMethod === 'paypal' ? (
+                <Button
+                  className="rounded-full px-6 tracking-wider uppercase"
+                  onClick={() => paySectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                >
+                  <CreditCard className="mr-2 h-4 w-4" /> Pay Now
+                </Button>
+              ) : (
+                <Button
+                  className="rounded-full px-6 tracking-wider uppercase"
+                  onClick={() => paySectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                >
+                  <ArrowRight className="mr-2 h-4 w-4" /> Continue
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -1300,18 +1326,22 @@ function ProductCard({
       transition={{ duration: 0.4 }}
       className="group"
     >
-      <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-secondary">
+      <div
+        className="relative aspect-[3/4] cursor-pointer overflow-hidden rounded-xl bg-secondary"
+        onClick={() => onQuickView(product)}
+      >
         <img
           src={product.imageUrl}
           alt={product.name}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           loading="lazy"
         />
-        <div className="absolute inset-0 flex items-end justify-center gap-2 bg-gradient-to-t from-black/60 via-transparent to-transparent p-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+        {/* Desktop hover overlay */}
+        <div className="absolute inset-0 hidden items-end justify-center gap-2 bg-gradient-to-t from-black/60 via-transparent to-transparent p-4 transition-opacity duration-300 md:flex group-hover:opacity-100 opacity-0">
           <Button
             size="sm"
             className="rounded-full text-xs tracking-wider uppercase"
-            onClick={handleAdd}
+            onClick={(e) => { e.stopPropagation(); handleAdd(); }}
           >
             <ShoppingBag className="mr-1.5 h-3.5 w-3.5" /> Add
           </Button>
@@ -1319,9 +1349,19 @@ function ProductCard({
             size="sm"
             variant="secondary"
             className="rounded-full text-xs"
-            onClick={() => onQuickView(product)}
+            onClick={(e) => { e.stopPropagation(); onQuickView(product); }}
           >
             <Eye className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+        {/* Mobile: always-visible quick-add button */}
+        <div className="absolute bottom-3 left-3 right-3 flex md:hidden">
+          <Button
+            size="sm"
+            className="w-full rounded-full text-xs tracking-wider uppercase shadow-lg"
+            onClick={(e) => { e.stopPropagation(); handleAdd(); }}
+          >
+            <ShoppingBag className="mr-1.5 h-3.5 w-3.5" /> Add to Cart
           </Button>
         </div>
         {product.featured && (
